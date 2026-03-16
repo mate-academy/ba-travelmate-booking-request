@@ -1,0 +1,1 @@
+# ba-travelmate-favorites
