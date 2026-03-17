@@ -2,6 +2,9 @@
 
 Welcome to the Travel Mate landing page project!
 
+**Description:**
+TravelMate is a learning project for the Mate academy business analysis course.
+
 ## How to run the website locally
 
 Here are step-by-step instructions to set up the necessary libraries and packages and start the project locally, on both newly set-up Mac and Windows laptops.
