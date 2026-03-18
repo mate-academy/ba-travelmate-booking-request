@@ -1,4 +1,4 @@
-# ba-travelmate-favorites / Travel Mate Landing Page
+# Travel Mate Landing Page
 
 Welcome to the Travel Mate landing page project!
 
