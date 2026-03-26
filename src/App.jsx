@@ -1,6 +1,8 @@
 import { useState } from 'react'
 import { Globe, Heart, ArrowRight, Search, MapPin, Calendar, Star } from 'lucide-react'
 import './App.css'
+import logo from './assets/logo.png'
+import hotel from './assets/hotel.png'
 
 function App() {
   const [showAuth, setShowAuth] = useState(false)
@@ -24,7 +26,7 @@ function App() {
       {/* Header */}
       <header className="header">
         <div className="logo">
-          <img src="/logo.png" alt="TravelMate Logo" className="logo-image" />
+          <img src={logo} alt="TravelMate Logo" className="logo-image" />
         </div>
         
         <nav className="nav-links">
@@ -78,7 +80,7 @@ function App() {
         {/* Right Column */}
         <div className="right-column">
           <div className="image-card">
-            <img src="/hotel.png" alt="Luxury Hotel" className="hotel-image" />
+            <img src={hotel} alt="Luxury Hotel" className="hotel-image" />
             
             <button className="like-btn">
               <Heart size={20} color="#71717A" />
