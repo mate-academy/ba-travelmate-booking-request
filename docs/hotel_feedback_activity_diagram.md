@@ -9,7 +9,7 @@
 
 ```mermaid
 flowchart TD
-    Start([🟢 Start]) --> A[Customer opens hotel page]
+    Start([🟢 Start]) --> A[Customer navigates\nto 'My Bookings']
 
     A --> B{Is customer\nauthenticated?}
 
@@ -18,57 +18,50 @@ flowchart TD
     D -- No --> End1([🔴 End])
     D -- Yes --> E
 
-    B -- Yes --> E{Has customer\ncompleted a booking\nat this hotel?}
+    B -- Yes --> E[System loads list of\ncompleted bookings]
 
-    E -- No --> F[Show error:\n'No confirmed booking']
-    F --> End2([🔴 End])
+    E --> F[Customer selects\na specific booking]
 
-    E -- Yes --> G{Has customer\nalready rated\nthis hotel?}
+    F --> G{Does a review\nalready exist\nfor this booking?}
 
-    G -- Yes --> H[Load existing rating\nand comment]
-    H --> I[Show pre-filled\nrating form]
+    G -- Yes --> H[Show message:\n'Review already submitted.\nYou can edit it.']
+    H --> End2([🔴 End\nEdit Review UC])
 
-    G -- No --> I2[Show empty\nrating form]
+    G -- No --> I[Show empty\nrating form]
 
-    I --> J
-    I2 --> J
+    I --> J[Customer selects\nstar rating 1–5]
 
-    J[Customer selects\nstar rating 1–5] --> K{Does customer\nwant to add\na comment?}
+    J --> K{Does customer\nwant to add\na comment?}
 
     K -- Yes --> L[Customer writes comment]
-    L --> M[Submit review]
-
+    L --> M[Customer submits review]
     K -- No --> M
 
-    M --> N{System validates\ninput}
+    M --> N{System validates input:\n– rating selected 1–5\n– comment ≤ 1000 chars\n– no prohibited content}
 
-    N -- Invalid --> O[Show validation error\nHighlight fields]
+    N -- Invalid --> O[Show validation error\nwith field hints]
     O --> J
 
-    N -- Valid --> P{Is this an\nupdate?}
+    N -- Valid --> P[Save review linked\nto booking ID in DB]
 
-    P -- Yes --> Q[Update existing\nrating in DB]
-    P -- No --> R[Save new\nrating in DB]
-
-    Q --> S[Recalculate hotel\naverage rating]
-    R --> S
-
-    S --> T[Send notification\nto hotel]
-    T --> U[Show success message\nto customer]
-    U --> End3([🔴 End])
+    P --> Q[Recalculate hotel\naverage rating]
+    Q --> R[Send notification\nto hotel]
+    R --> S[Show success message\nto customer]
+    S --> End3([🔴 End])
 ```
 
 ---
 
 ## Use Case Reference
 
-| Field                 | Value                                                               |
-| --------------------- | ------------------------------------------------------------------- |
-| **Use Case Name**     | Hotel Rating                                                        |
-| **Primary Actor**     | Customer                                                            |
-| **Goal**              | Rate a visited hotel                                                |
-| **Pre-conditions**    | Authorized; completed booking; not rated yet                        |
-| **Post-conditions**   | Rating saved; hotel average updated; hotel notified                 |
-| **Main Flow**         | Auth check → Booking check → Duplicate check → Form → Submit → Save |
-| **Alternative Flows** | Not logged in → login prompt; Already rated → pre-fill form         |
-| **Exception Flows**   | No booking → access denied; Validation fail → retry                 |
+| Field | Value |
+|---|---|
+| **Use Case Name** | Hotel Rating |
+| **Primary Actor** | Customer |
+| **Goal** | Submit a new review for a specific completed booking |
+| **Pre-conditions** | Customer is authenticated; at least one booking exists with status "completed" |
+| **Post-conditions** | Review saved and linked to booking ID; hotel average rating updated; hotel notified |
+| **Out of scope** | Editing an existing review → UC "Edit Review" |
+| **Main Flow** | Auth → Select booking → Check duplicate → Rating form → Submit → Validate → Save |
+| **Alternative Flow** | Not logged in → login prompt → continue or exit |
+| **Exception Flows** | Review already exists for booking → redirect to Edit Review UC; Validation fails → retry |
