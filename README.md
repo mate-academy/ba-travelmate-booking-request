@@ -1,7 +1,7 @@
 # Travel Mate Web Site Landing Page
 
-Welcome to the Travel Mate landing page project!
-
+Welcome to the Travel Mate landing page project
+Welcome to the Travel Mate landing page project!!!
 **Description:**
 TravelMate is a learning project for the Mate academy business analysis course.
 
