@@ -1,0 +1,1607 @@
+openapi: 3.0.3
+info:
+  title: TravelMate Booking API
+  description: |
+    REST API for the TravelMate hotel booking platform.
+
+    This API allows you to:
+    - Manage user accounts (registration, authentication, profile updates)
+    - Browse and manage hotel listings
+    - Create and manage hotel bookings
+
+    ## Authentication
+    Most endpoints require a Bearer token in the Authorization header.
+    Obtain a token by calling POST /api/auth/login with valid credentials.
+
+    ## Error Handling
+    All errors follow a consistent format with an error code and message.
+  version: 1.0.0
+  contact:
+    name: TravelMate Support
+    email: support@travelmate.com
+
+servers:
+  - url: http://localhost:3000/api
+    description: Local development server
+  - url: https://api.travelmate.com/api
+    description: Production server
+
+tags:
+  - name: Authentication
+    description: User authentication endpoints
+  - name: Users
+    description: User management operations
+  - name: Hotels
+    description: Hotel listing operations
+  - name: Bookings
+    description: Booking management operations
+
+paths:
+  # ==================== AUTHENTICATION ====================
+  /auth/register:
+    post:
+      tags:
+        - Authentication
+      summary: Register a new user
+      description: |
+        Creates a new user account in the system.
+        The email must be unique. Password must be at least 8 characters.
+      operationId: registerUser
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/UserRegistration'
+            example:
+              email: "john.doe@example.com"
+              password: "SecurePass123!"
+              firstName: "John"
+              lastName: "Doe"
+              phone: "+1-555-123-4567"
+      responses:
+        '201':
+          description: User successfully registered
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/UserResponse'
+              example:
+                id: 1
+                email: "john.doe@example.com"
+                firstName: "John"
+                lastName: "Doe"
+                phone: "+1-555-123-4567"
+                createdAt: "2024-01-15T10:30:00Z"
+        '400':
+          description: Invalid input data
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+              example:
+                code: "VALIDATION_ERROR"
+                message: "Password must be at least 8 characters long"
+        '409':
+          description: Email already exists
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+              example:
+                code: "EMAIL_EXISTS"
+                message: "A user with this email already exists"
+
+  /auth/login:
+    post:
+      tags:
+        - Authentication
+      summary: Authenticate user
+      description: |
+        Authenticates a user with email and password.
+        Returns a JWT token valid for 24 hours.
+      operationId: loginUser
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/LoginRequest'
+            example:
+              email: "john.doe@example.com"
+              password: "SecurePass123!"
+      responses:
+        '200':
+          description: Login successful
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/LoginResponse'
+              example:
+                token: "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ1c2VySWQiOjEsImVtYWlsIjoiam9obi5kb2VAZXhhbXBsZS5jb20iLCJpYXQiOjE3MDUzMTQyMDAsImV4cCI6MTcwNTQwMDYwMH0.abc123"
+                expiresIn: 86400
+                user:
+                  id: 1
+                  email: "john.doe@example.com"
+                  firstName: "John"
+                  lastName: "Doe"
+        '401':
+          description: Invalid credentials
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+              example:
+                code: "INVALID_CREDENTIALS"
+                message: "Invalid email or password"
+
+  # ==================== USERS ====================
+  /users:
+    get:
+      tags:
+        - Users
+      summary: Get all users
+      description: |
+        Retrieves a paginated list of all users.
+        Requires admin authentication.
+      operationId: getUsers
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: page
+          in: query
+          description: Page number for pagination
+          schema:
+            type: integer
+            default: 1
+            minimum: 1
+        - name: limit
+          in: query
+          description: Number of users per page
+          schema:
+            type: integer
+            default: 10
+            minimum: 1
+            maximum: 100
+      responses:
+        '200':
+          description: List of users retrieved successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/UserListResponse'
+              example:
+                data:
+                  - id: 1
+                    email: "john.doe@example.com"
+                    firstName: "John"
+                    lastName: "Doe"
+                    phone: "+1-555-123-4567"
+                    createdAt: "2024-01-15T10:30:00Z"
+                  - id: 2
+                    email: "jane.smith@example.com"
+                    firstName: "Jane"
+                    lastName: "Smith"
+                    phone: "+1-555-987-6543"
+                    createdAt: "2024-01-16T14:20:00Z"
+                pagination:
+                  currentPage: 1
+                  totalPages: 5
+                  totalItems: 42
+                  itemsPerPage: 10
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+
+  /users/{userId}:
+    get:
+      tags:
+        - Users
+      summary: Get user by ID
+      description: Retrieves detailed information about a specific user.
+      operationId: getUserById
+      security:
+        - bearerAuth: []
+      parameters:
+        - $ref: '#/components/parameters/userId'
+      responses:
+        '200':
+          description: User found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/UserResponse'
+              example:
+                id: 1
+                email: "john.doe@example.com"
+                firstName: "John"
+                lastName: "Doe"
+                phone: "+1-555-123-4567"
+                createdAt: "2024-01-15T10:30:00Z"
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          description: User not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+              example:
+                code: "USER_NOT_FOUND"
+                message: "User with ID 999 not found"
+
+    put:
+      tags:
+        - Users
+      summary: Update user
+      description: |
+        Updates user profile information.
+        Users can only update their own profile unless they are admins.
+      operationId: updateUser
+      security:
+        - bearerAuth: []
+      parameters:
+        - $ref: '#/components/parameters/userId'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/UserUpdate'
+            example:
+              firstName: "Jonathan"
+              lastName: "Doe"
+              phone: "+1-555-999-8888"
+      responses:
+        '200':
+          description: User updated successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/UserResponse'
+              example:
+                id: 1
+                email: "john.doe@example.com"
+                firstName: "Jonathan"
+                lastName: "Doe"
+                phone: "+1-555-999-8888"
+                createdAt: "2024-01-15T10:30:00Z"
+        '400':
+          description: Invalid input data
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+              example:
+                code: "VALIDATION_ERROR"
+                message: "Phone number format is invalid"
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          description: User not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+              example:
+                code: "USER_NOT_FOUND"
+                message: "User with ID 999 not found"
+
+    delete:
+      tags:
+        - Users
+      summary: Delete user
+      description: |
+        Permanently deletes a user account.
+        This action cannot be undone. All associated bookings will be cancelled.
+      operationId: deleteUser
+      security:
+        - bearerAuth: []
+      parameters:
+        - $ref: '#/components/parameters/userId'
+      responses:
+        '204':
+          description: User deleted successfully
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          description: User not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+              example:
+                code: "USER_NOT_FOUND"
+                message: "User with ID 999 not found"
+
+  # ==================== HOTELS ====================
+  /hotels:
+    get:
+      tags:
+        - Hotels
+      summary: Get all hotels
+      description: |
+        Retrieves a list of hotels with optional filtering.
+        Results are paginated and can be filtered by location, price, and rating.
+      operationId: getHotels
+      parameters:
+        - name: page
+          in: query
+          description: Page number for pagination
+          schema:
+            type: integer
+            default: 1
+        - name: limit
+          in: query
+          description: Number of hotels per page
+          schema:
+            type: integer
+            default: 10
+            maximum: 50
+        - name: city
+          in: query
+          description: Filter by city name
+          schema:
+            type: string
+          example: "Paris"
+        - name: country
+          in: query
+          description: Filter by country
+          schema:
+            type: string
+          example: "France"
+        - name: minPrice
+          in: query
+          description: Minimum price per night
+          schema:
+            type: number
+            format: float
+          example: 50
+        - name: maxPrice
+          in: query
+          description: Maximum price per night
+          schema:
+            type: number
+            format: float
+          example: 300
+        - name: minRating
+          in: query
+          description: Minimum star rating (1-5)
+          schema:
+            type: integer
+            minimum: 1
+            maximum: 5
+          example: 4
+        - name: amenities
+          in: query
+          description: Filter by amenities (comma-separated)
+          schema:
+            type: string
+          example: "wifi,pool,spa"
+      responses:
+        '200':
+          description: List of hotels
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HotelListResponse'
+              example:
+                data:
+                  - id: 1
+                    name: "Grand Plaza Hotel"
+                    description: "Luxury 5-star hotel in the heart of Paris"
+                    address: "123 Champs-Élysées"
+                    city: "Paris"
+                    country: "France"
+                    postalCode: "75008"
+                    starRating: 5
+                    pricePerNight: 299.99
+                    amenities: ["wifi", "pool", "spa", "gym", "restaurant"]
+                    imageUrl: "https://images.travelmate.com/hotels/grand-plaza.jpg"
+                    totalRooms: 150
+                    availableRooms: 23
+                  - id: 2
+                    name: "Cozy Inn"
+                    description: "Charming boutique hotel near Montmartre"
+                    address: "45 Rue Lepic"
+                    city: "Paris"
+                    country: "France"
+                    postalCode: "75018"
+                    starRating: 3
+                    pricePerNight: 89.99
+                    amenities: ["wifi", "breakfast"]
+                    imageUrl: "https://images.travelmate.com/hotels/cozy-inn.jpg"
+                    totalRooms: 25
+                    availableRooms: 8
+                pagination:
+                  currentPage: 1
+                  totalPages: 12
+                  totalItems: 115
+                  itemsPerPage: 10
+
+    post:
+      tags:
+        - Hotels
+      summary: Create a new hotel
+      description: |
+        Adds a new hotel to the system.
+        Requires admin authentication.
+      operationId: createHotel
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/HotelCreate'
+            example:
+              name: "Seaside Resort"
+              description: "Beautiful beachfront resort with stunning ocean views"
+              address: "789 Ocean Drive"
+              city: "Miami"
+              country: "USA"
+              postalCode: "33139"
+              starRating: 4
+              pricePerNight: 199.99
+              amenities: ["wifi", "pool", "beach access", "restaurant", "bar"]
+              imageUrl: "https://images.travelmate.com/hotels/seaside-resort.jpg"
+              totalRooms: 200
+      responses:
+        '201':
+          description: Hotel created successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HotelResponse'
+              example:
+                id: 3
+                name: "Seaside Resort"
+                description: "Beautiful beachfront resort with stunning ocean views"
+                address: "789 Ocean Drive"
+                city: "Miami"
+                country: "USA"
+                postalCode: "33139"
+                starRating: 4
+                pricePerNight: 199.99
+                amenities: ["wifi", "pool", "beach access", "restaurant", "bar"]
+                imageUrl: "https://images.travelmate.com/hotels/seaside-resort.jpg"
+                totalRooms: 200
+                availableRooms: 200
+                createdAt: "2024-01-20T09:00:00Z"
+        '400':
+          description: Invalid input data
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+              example:
+                code: "VALIDATION_ERROR"
+                message: "Star rating must be between 1 and 5"
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+
+  /hotels/{hotelId}:
+    get:
+      tags:
+        - Hotels
+      summary: Get hotel by ID
+      description: Retrieves detailed information about a specific hotel.
+      operationId: getHotelById
+      parameters:
+        - $ref: '#/components/parameters/hotelId'
+      responses:
+        '200':
+          description: Hotel found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HotelResponse'
+              example:
+                id: 1
+                name: "Grand Plaza Hotel"
+                description: "Luxury 5-star hotel in the heart of Paris with world-class amenities"
+                address: "123 Champs-Élysées"
+                city: "Paris"
+                country: "France"
+                postalCode: "75008"
+                starRating: 5
+                pricePerNight: 299.99
+                amenities: ["wifi", "pool", "spa", "gym", "restaurant", "room service", "concierge"]
+                imageUrl: "https://images.travelmate.com/hotels/grand-plaza.jpg"
+                totalRooms: 150
+                availableRooms: 23
+                createdAt: "2023-06-15T08:00:00Z"
+        '404':
+          description: Hotel not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+              example:
+                code: "HOTEL_NOT_FOUND"
+                message: "Hotel with ID 999 not found"
+
+    put:
+      tags:
+        - Hotels
+      summary: Update hotel
+      description: |
+        Updates hotel information.
+        Requires admin authentication.
+      operationId: updateHotel
+      security:
+        - bearerAuth: []
+      parameters:
+        - $ref: '#/components/parameters/hotelId'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/HotelUpdate'
+            example:
+              pricePerNight: 329.99
+              availableRooms: 18
+              amenities: ["wifi", "pool", "spa", "gym", "restaurant", "room service", "concierge", "valet parking"]
+      responses:
+        '200':
+          description: Hotel updated successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HotelResponse'
+              example:
+                id: 1
+                name: "Grand Plaza Hotel"
+                description: "Luxury 5-star hotel in the heart of Paris with world-class amenities"
+                address: "123 Champs-Élysées"
+                city: "Paris"
+                country: "France"
+                postalCode: "75008"
+                starRating: 5
+                pricePerNight: 329.99
+                amenities: ["wifi", "pool", "spa", "gym", "restaurant", "room service", "concierge", "valet parking"]
+                imageUrl: "https://images.travelmate.com/hotels/grand-plaza.jpg"
+                totalRooms: 150
+                availableRooms: 18
+                createdAt: "2023-06-15T08:00:00Z"
+        '400':
+          description: Invalid input data
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+              example:
+                code: "VALIDATION_ERROR"
+                message: "Price per night must be a positive number"
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          description: Hotel not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+              example:
+                code: "HOTEL_NOT_FOUND"
+                message: "Hotel with ID 999 not found"
+
+    delete:
+      tags:
+        - Hotels
+      summary: Delete hotel
+      description: |
+        Removes a hotel from the system.
+        All future bookings will be cancelled and customers notified.
+        Requires admin authentication.
+      operationId: deleteHotel
+      security:
+        - bearerAuth: []
+      parameters:
+        - $ref: '#/components/parameters/hotelId'
+      responses:
+        '204':
+          description: Hotel deleted successfully
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          description: Hotel not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+              example:
+                code: "HOTEL_NOT_FOUND"
+                message: "Hotel with ID 999 not found"
+        '409':
+          description: Cannot delete hotel with active bookings
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+              example:
+                code: "ACTIVE_BOOKINGS_EXIST"
+                message: "Cannot delete hotel with 5 active bookings. Cancel bookings first."
+
+  /hotels/{hotelId}/availability:
+    get:
+      tags:
+        - Hotels
+      summary: Check hotel availability
+      description: |
+        Checks room availability for a specific date range.
+        Returns the number of available rooms and pricing.
+      operationId: checkHotelAvailability
+      parameters:
+        - $ref: '#/components/parameters/hotelId'
+        - name: checkIn
+          in: query
+          required: true
+          description: Check-in date (YYYY-MM-DD)
+          schema:
+            type: string
+            format: date
+          example: "2024-03-15"
+        - name: checkOut
+          in: query
+          required: true
+          description: Check-out date (YYYY-MM-DD)
+          schema:
+            type: string
+            format: date
+          example: "2024-03-20"
+        - name: guests
+          in: query
+          description: Number of guests
+          schema:
+            type: integer
+            default: 2
+          example: 2
+      responses:
+        '200':
+          description: Availability information
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AvailabilityResponse'
+              example:
+                hotelId: 1
+                hotelName: "Grand Plaza Hotel"
+                checkIn: "2024-03-15"
+                checkOut: "2024-03-20"
+                nights: 5
+                availableRooms: 12
+                pricePerNight: 299.99
+                totalPrice: 1499.95
+                taxes: 149.99
+                grandTotal: 1649.94
+                currency: "USD"
+        '400':
+          description: Invalid date range
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+              example:
+                code: "INVALID_DATE_RANGE"
+                message: "Check-out date must be after check-in date"
+        '404':
+          description: Hotel not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+              example:
+                code: "HOTEL_NOT_FOUND"
+                message: "Hotel with ID 999 not found"
+
+  # ==================== BOOKINGS ====================
+  /bookings:
+    get:
+      tags:
+        - Bookings
+      summary: Get all bookings
+      description: |
+        Retrieves bookings. Regular users see only their own bookings.
+        Admins can see all bookings with optional filters.
+      operationId: getBookings
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: page
+          in: query
+          schema:
+            type: integer
+            default: 1
+        - name: limit
+          in: query
+          schema:
+            type: integer
+            default: 10
+        - name: status
+          in: query
+          description: Filter by booking status
+          schema:
+            type: string
+            enum: [pending, confirmed, cancelled, completed]
+        - name: userId
+          in: query
+          description: Filter by user ID (admin only)
+          schema:
+            type: integer
+        - name: hotelId
+          in: query
+          description: Filter by hotel ID
+          schema:
+            type: integer
+      responses:
+        '200':
+          description: List of bookings
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/BookingListResponse'
+              example:
+                data:
+                  - id: 1
+                    userId: 1
+                    hotelId: 1
+                    hotelName: "Grand Plaza Hotel"
+                    checkIn: "2024-03-15"
+                    checkOut: "2024-03-20"
+                    guests: 2
+                    rooms: 1
+                    totalPrice: 1649.94
+                    status: "confirmed"
+                    createdAt: "2024-01-20T14:30:00Z"
+                  - id: 2
+                    userId: 1
+                    hotelId: 2
+                    hotelName: "Cozy Inn"
+                    checkIn: "2024-04-10"
+                    checkOut: "2024-04-12"
+                    guests: 1
+                    rooms: 1
+                    totalPrice: 196.78
+                    status: "pending"
+                    createdAt: "2024-01-21T09:15:00Z"
+                pagination:
+                  currentPage: 1
+                  totalPages: 1
+                  totalItems: 2
+                  itemsPerPage: 10
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+
+    post:
+      tags:
+        - Bookings
+      summary: Create a new booking
+      description: |
+        Creates a new hotel booking.
+        The system will verify availability before confirming the booking.
+      operationId: createBooking
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/BookingCreate'
+            example:
+              hotelId: 1
+              checkIn: "2024-03-15"
+              checkOut: "2024-03-20"
+              guests: 2
+              rooms: 1
+              specialRequests: "Late check-in requested, arriving around 11 PM"
+      responses:
+        '201':
+          description: Booking created successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/BookingResponse'
+              example:
+                id: 3
+                userId: 1
+                hotelId: 1
+                hotelName: "Grand Plaza Hotel"
+                hotelAddress: "123 Champs-Élysées, Paris, France"
+                checkIn: "2024-03-15"
+                checkOut: "2024-03-20"
+                guests: 2
+                rooms: 1
+                nights: 5
+                pricePerNight: 299.99
+                subtotal: 1499.95
+                taxes: 149.99
+                totalPrice: 1649.94
+                currency: "USD"
+                status: "pending"
+                specialRequests: "Late check-in requested, arriving around 11 PM"
+                confirmationCode: "TM-2024-ABC123"
+                createdAt: "2024-01-22T10:00:00Z"
+        '400':
+          description: Invalid booking data
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+              example:
+                code: "VALIDATION_ERROR"
+                message: "Check-in date cannot be in the past"
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '409':
+          description: No rooms available
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+              example:
+                code: "NO_AVAILABILITY"
+                message: "No rooms available for the selected dates"
+
+  /bookings/{bookingId}:
+    get:
+      tags:
+        - Bookings
+      summary: Get booking by ID
+      description: Retrieves detailed information about a specific booking.
+      operationId: getBookingById
+      security:
+        - bearerAuth: []
+      parameters:
+        - $ref: '#/components/parameters/bookingId'
+      responses:
+        '200':
+          description: Booking found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/BookingResponse'
+              example:
+                id: 1
+                userId: 1
+                hotelId: 1
+                hotelName: "Grand Plaza Hotel"
+                hotelAddress: "123 Champs-Élysées, Paris, France"
+                checkIn: "2024-03-15"
+                checkOut: "2024-03-20"
+                guests: 2
+                rooms: 1
+                nights: 5
+                pricePerNight: 299.99
+                subtotal: 1499.95
+                taxes: 149.99
+                totalPrice: 1649.94
+                currency: "USD"
+                status: "confirmed"
+                specialRequests: "Late check-in requested"
+                confirmationCode: "TM-2024-XYZ789"
+                createdAt: "2024-01-20T14:30:00Z"
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          description: Booking not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+              example:
+                code: "BOOKING_NOT_FOUND"
+                message: "Booking with ID 999 not found"
+
+    put:
+      tags:
+        - Bookings
+      summary: Update booking
+      description: |
+        Updates an existing booking.
+        Only pending bookings can be modified.
+        Changes to dates will be subject to availability check.
+      operationId: updateBooking
+      security:
+        - bearerAuth: []
+      parameters:
+        - $ref: '#/components/parameters/bookingId'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/BookingUpdate'
+            example:
+              checkIn: "2024-03-16"
+              checkOut: "2024-03-21"
+              guests: 3
+              specialRequests: "Need extra bed for third guest"
+      responses:
+        '200':
+          description: Booking updated successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/BookingResponse'
+              example:
+                id: 1
+                userId: 1
+                hotelId: 1
+                hotelName: "Grand Plaza Hotel"
+                hotelAddress: "123 Champs-Élysées, Paris, France"
+                checkIn: "2024-03-16"
+                checkOut: "2024-03-21"
+                guests: 3
+                rooms: 1
+                nights: 5
+                pricePerNight: 299.99
+                subtotal: 1499.95
+                taxes: 149.99
+                totalPrice: 1649.94
+                currency: "USD"
+                status: "pending"
+                specialRequests: "Need extra bed for third guest"
+                confirmationCode: "TM-2024-XYZ789"
+                createdAt: "2024-01-20T14:30:00Z"
+        '400':
+          description: Invalid update data
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+              example:
+                code: "VALIDATION_ERROR"
+                message: "Cannot reduce check-out date to before check-in"
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          description: Booking not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+              example:
+                code: "BOOKING_NOT_FOUND"
+                message: "Booking with ID 999 not found"
+        '409':
+          description: Cannot modify booking or no availability
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+              example:
+                code: "BOOKING_NOT_MODIFIABLE"
+                message: "Cannot modify a confirmed booking. Please cancel and rebook."
+
+    delete:
+      tags:
+        - Bookings
+      summary: Cancel booking
+      description: |
+        Cancels a booking.
+        Cancellation policies may apply based on timing.
+      operationId: cancelBooking
+      security:
+        - bearerAuth: []
+      parameters:
+        - $ref: '#/components/parameters/bookingId'
+      responses:
+        '200':
+          description: Booking cancelled successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CancellationResponse'
+              example:
+                bookingId: 1
+                status: "cancelled"
+                refundAmount: 1649.94
+                refundPercentage: 100
+                message: "Booking cancelled successfully. Full refund will be processed within 5-7 business days."
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          description: Booking not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+              example:
+                code: "BOOKING_NOT_FOUND"
+                message: "Booking with ID 999 not found"
+        '409':
+          description: Booking cannot be cancelled
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+              example:
+                code: "BOOKING_NOT_CANCELLABLE"
+                message: "Cannot cancel a completed booking"
+
+  /bookings/{bookingId}/confirm:
+    post:
+      tags:
+        - Bookings
+      summary: Confirm a pending booking
+      description: |
+        Confirms a pending booking after payment verification.
+        Requires admin authentication.
+      operationId: confirmBooking
+      security:
+        - bearerAuth: []
+      parameters:
+        - $ref: '#/components/parameters/bookingId'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                paymentReference:
+                  type: string
+                  description: Payment transaction reference
+              required:
+                - paymentReference
+            example:
+              paymentReference: "PAY-123456789"
+      responses:
+        '200':
+          description: Booking confirmed
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/BookingResponse'
+              example:
+                id: 1
+                userId: 1
+                hotelId: 1
+                hotelName: "Grand Plaza Hotel"
+                hotelAddress: "123 Champs-Élysées, Paris, France"
+                checkIn: "2024-03-15"
+                checkOut: "2024-03-20"
+                guests: 2
+                rooms: 1
+                nights: 5
+                pricePerNight: 299.99
+                subtotal: 1499.95
+                taxes: 149.99
+                totalPrice: 1649.94
+                currency: "USD"
+                status: "confirmed"
+                specialRequests: "Late check-in requested"
+                confirmationCode: "TM-2024-XYZ789"
+                paymentReference: "PAY-123456789"
+                createdAt: "2024-01-20T14:30:00Z"
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          description: Booking not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+              example:
+                code: "BOOKING_NOT_FOUND"
+                message: "Booking with ID 999 not found"
+        '409':
+          description: Booking already confirmed or cancelled
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+              example:
+                code: "INVALID_BOOKING_STATUS"
+                message: "Booking is already confirmed"
+
+# ==================== COMPONENTS ====================
+components:
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+      description: JWT token obtained from /auth/login
+
+  parameters:
+    userId:
+      name: userId
+      in: path
+      required: true
+      description: Unique user identifier
+      schema:
+        type: integer
+      example: 1
+
+    hotelId:
+      name: hotelId
+      in: path
+      required: true
+      description: Unique hotel identifier
+      schema:
+        type: integer
+      example: 1
+
+    bookingId:
+      name: bookingId
+      in: path
+      required: true
+      description: Unique booking identifier
+      schema:
+        type: integer
+      example: 1
+
+  responses:
+    Unauthorized:
+      description: Authentication required
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'
+          example:
+            code: "UNAUTHORIZED"
+            message: "Authentication token is missing or invalid"
+
+    Forbidden:
+      description: Insufficient permissions
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'
+          example:
+            code: "FORBIDDEN"
+            message: "You do not have permission to perform this action"
+
+  schemas:
+    # ---------- ERROR ----------
+    Error:
+      type: object
+      required:
+        - code
+        - message
+      properties:
+        code:
+          type: string
+          description: Error code for programmatic handling
+        message:
+          type: string
+          description: Human-readable error message
+        details:
+          type: array
+          items:
+            type: object
+            properties:
+              field:
+                type: string
+              message:
+                type: string
+          description: Additional error details for validation errors
+
+    # ---------- PAGINATION ----------
+    Pagination:
+      type: object
+      properties:
+        currentPage:
+          type: integer
+        totalPages:
+          type: integer
+        totalItems:
+          type: integer
+        itemsPerPage:
+          type: integer
+
+    # ---------- USER SCHEMAS ----------
+    UserRegistration:
+      type: object
+      required:
+        - email
+        - password
+        - firstName
+        - lastName
+      properties:
+        email:
+          type: string
+          format: email
+          description: User's email address (must be unique)
+        password:
+          type: string
+          format: password
+          minLength: 8
+          description: User's password (minimum 8 characters)
+        firstName:
+          type: string
+          description: User's first name
+        lastName:
+          type: string
+          description: User's last name
+        phone:
+          type: string
+          description: User's phone number
+
+    LoginRequest:
+      type: object
+      required:
+        - email
+        - password
+      properties:
+        email:
+          type: string
+          format: email
+        password:
+          type: string
+          format: password
+
+    LoginResponse:
+      type: object
+      properties:
+        token:
+          type: string
+          description: JWT authentication token
+        expiresIn:
+          type: integer
+          description: Token expiration time in seconds
+        user:
+          type: object
+          properties:
+            id:
+              type: integer
+            email:
+              type: string
+            firstName:
+              type: string
+            lastName:
+              type: string
+
+    UserResponse:
+      type: object
+      properties:
+        id:
+          type: integer
+        email:
+          type: string
+          format: email
+        firstName:
+          type: string
+        lastName:
+          type: string
+        phone:
+          type: string
+        createdAt:
+          type: string
+          format: date-time
+
+    UserUpdate:
+      type: object
+      properties:
+        firstName:
+          type: string
+        lastName:
+          type: string
+        phone:
+          type: string
+
+    UserListResponse:
+      type: object
+      properties:
+        data:
+          type: array
+          items:
+            $ref: '#/components/schemas/UserResponse'
+        pagination:
+          $ref: '#/components/schemas/Pagination'
+
+    # ---------- HOTEL SCHEMAS ----------
+    HotelCreate:
+      type: object
+      required:
+        - name
+        - address
+        - city
+        - country
+        - starRating
+        - pricePerNight
+        - totalRooms
+      properties:
+        name:
+          type: string
+          description: Hotel name
+        description:
+          type: string
+          description: Hotel description
+        address:
+          type: string
+          description: Street address
+        city:
+          type: string
+          description: City name
+        country:
+          type: string
+          description: Country name
+        postalCode:
+          type: string
+          description: Postal/ZIP code
+        starRating:
+          type: integer
+          minimum: 1
+          maximum: 5
+          description: Hotel star rating (1-5)
+        pricePerNight:
+          type: number
+          format: float
+          description: Price per night in USD
+        amenities:
+          type: array
+          items:
+            type: string
+          description: List of available amenities
+        imageUrl:
+          type: string
+          format: uri
+          description: URL to hotel image
+        totalRooms:
+          type: integer
+          description: Total number of rooms
+
+    HotelUpdate:
+      type: object
+      properties:
+        name:
+          type: string
+        description:
+          type: string
+        address:
+          type: string
+        city:
+          type: string
+        country:
+          type: string
+        postalCode:
+          type: string
+        starRating:
+          type: integer
+          minimum: 1
+          maximum: 5
+        pricePerNight:
+          type: number
+          format: float
+        amenities:
+          type: array
+          items:
+            type: string
+        imageUrl:
+          type: string
+          format: uri
+        totalRooms:
+          type: integer
+        availableRooms:
+          type: integer
+
+    HotelResponse:
+      type: object
+      properties:
+        id:
+          type: integer
+        name:
+          type: string
+        description:
+          type: string
+        address:
+          type: string
+        city:
+          type: string
+        country:
+          type: string
+        postalCode:
+          type: string
+        starRating:
+          type: integer
+        pricePerNight:
+          type: number
+          format: float
+        amenities:
+          type: array
+          items:
+            type: string
+        imageUrl:
+          type: string
+          format: uri
+        totalRooms:
+          type: integer
+        availableRooms:
+          type: integer
+        createdAt:
+          type: string
+          format: date-time
+
+    HotelListResponse:
+      type: object
+      properties:
+        data:
+          type: array
+          items:
+            $ref: '#/components/schemas/HotelResponse'
+        pagination:
+          $ref: '#/components/schemas/Pagination'
+
+    AvailabilityResponse:
+      type: object
+      properties:
+        hotelId:
+          type: integer
+        hotelName:
+          type: string
+        checkIn:
+          type: string
+          format: date
+        checkOut:
+          type: string
+          format: date
+        nights:
+          type: integer
+        availableRooms:
+          type: integer
+        pricePerNight:
+          type: number
+          format: float
+        totalPrice:
+          type: number
+          format: float
+        taxes:
+          type: number
+          format: float
+        grandTotal:
+          type: number
+          format: float
+        currency:
+          type: string
+
+    # ---------- BOOKING SCHEMAS ----------
+    BookingCreate:
+      type: object
+      required:
+        - hotelId
+        - checkIn
+        - checkOut
+        - guests
+      properties:
+        hotelId:
+          type: integer
+          description: ID of the hotel to book
+        checkIn:
+          type: string
+          format: date
+          description: Check-in date (YYYY-MM-DD)
+        checkOut:
+          type: string
+          format: date
+          description: Check-out date (YYYY-MM-DD)
+        guests:
+          type: integer
+          minimum: 1
+          description: Number of guests
+        rooms:
+          type: integer
+          minimum: 1
+          default: 1
+          description: Number of rooms
+        specialRequests:
+          type: string
+          description: Special requests or notes
+
+    BookingUpdate:
+      type: object
+      properties:
+        checkIn:
+          type: string
+          format: date
+        checkOut:
+          type: string
+          format: date
+        guests:
+          type: integer
+          minimum: 1
+        rooms:
+          type: integer
+          minimum: 1
+        specialRequests:
+          type: string
+
+    BookingResponse:
+      type: object
+      properties:
+        id:
+          type: integer
+        userId:
+          type: integer
+        hotelId:
+          type: integer
+        hotelName:
+          type: string
+        hotelAddress:
+          type: string
+        checkIn:
+          type: string
+          format: date
+        checkOut:
+          type: string
+          format: date
+        guests:
+          type: integer
+        rooms:
+          type: integer
+        nights:
+          type: integer
+        pricePerNight:
+          type: number
+          format: float
+        subtotal:
+          type: number
+          format: float
+        taxes:
+          type: number
+          format: float
+        totalPrice:
+          type: number
+          format: float
+        currency:
+          type: string
+        status:
+          type: string
+          enum: [pending, confirmed, cancelled, completed]
+        specialRequests:
+          type: string
+        confirmationCode:
+          type: string
+        paymentReference:
+          type: string
+        createdAt:
+          type: string
+          format: date-time
+
+    BookingListResponse:
+      type: object
+      properties:
+        data:
+          type: array
+          items:
+            $ref: '#/components/schemas/BookingResponse'
+        pagination:
+          $ref: '#/components/schemas/Pagination'
+
+    CancellationResponse:
+      type: object
+      properties:
+        bookingId:
+          type: integer
+        status:
+          type: string
+        refundAmount:
+          type: number
+          format: float
+        refundPercentage:
+          type: integer
+        message:
+          type: string
